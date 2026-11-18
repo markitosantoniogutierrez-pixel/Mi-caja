@@ -97,13 +97,16 @@ const bkNm=p=>{const b=p.bk&&D.banks.find(x=>x.id===p.bk);return b?b.name:''};
 const bkOwe=id=>D.pen.filter(x=>!x.done&&x.bk===id&&x.dir==='me'&&x.cur==='USD').reduce((a,x)=>a+x.amt,0);
 function rsOpts(){const L=D.con.filter(c=>c.tipo==='remesero');return L.length?'<option value="">— Elegir remesero —</option>'+L.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join(''):'<option value="">No tienes remeseros guardados</option>'}
 function rsel(v){const e=$('#f-who');if(e&&v)e.value=v}
-function bkUI(){return `<h3>Bancos</h3><div class="card" style="padding:4px 14px">${D.banks.map(b=>`<div class="it"><div><b>${esc(b.name)}</b><div class="mut">Me debe ${n(bkOwe(b.id))} USD</div></div><button class="btn alt sm" onclick="bkName('${b.id}')">Cambiar nombre</button></div>`).join('')}</div>`}
+function bkUI(){try{return bkUI0()}catch(e){return''}}
+function bkUI0(){return `<h3>Bancos</h3><div class="card" style="padding:4px 14px">${D.banks.map(b=>`<div class="it"><div><b>${esc(b.name)}</b><div class="mut">Me debe ${n(bkOwe(b.id))} USD</div></div><button class="btn alt sm" onclick="bkName('${b.id}')">Cambiar nombre</button></div>`).join('')}</div>`}
 function bkName(id){const b=D.banks.find(x=>x.id===id);sheet(`<h2>Nombre del banco</h2><label>Nombre<input id="b-n" value="${esc(b.name)}"></label><button class="btn" onclick="saveBk('${id}')">Guardar nombre</button>`)}
 function saveBk(id){const nm=txt('b-n');if(!nm){toast('Escribe el nombre');return}D.banks.find(x=>x.id===id).name=nm;D.pen.forEach(x=>{if(x.bk===id)x.who=nm});save();closeS();R()}
-function bkPen(){return `<h3>Bancos (me deben)</h3><div class="card" style="padding:4px 14px">${D.banks.map(b=>{const o=bkOwe(b.id);return `<div class="it"><div><b>${esc(b.name)}</b></div><div style="text-align:right"><div class="num ${o>.004?'pos':''}">${n(o)} USD</div>${o>.004?`<button class="btn alt sm" style="margin-top:6px" onclick="bkPay('${b.id}')">${armed==='bk'+b.id?'Toca otra vez para saldar':'Saldar deuda'}</button>`:''}</div></div>`}).join('')}</div>`}
+function bkPen(){try{return bkPen0()}catch(e){return''}}
+function bkPen0(){return `<h3>Bancos (me deben)</h3><div class="card" style="padding:4px 14px">${D.banks.map(b=>{const o=bkOwe(b.id);return `<div class="it"><div><b>${esc(b.name)}</b></div><div style="text-align:right"><div class="num ${o>.004?'pos':''}">${n(o)} USD</div>${o>.004?`<button class="btn alt sm" style="margin-top:6px" onclick="bkPay('${b.id}')">${armed==='bk'+b.id?'Toca otra vez para saldar':'Saldar deuda'}</button>`:''}</div></div>`}).join('')}</div>`}
 function bkPay(id){if(armed==='bk'+id){let t=0;D.pen.forEach(x=>{if(!x.done&&x.bk===id&&x.dir==='me'){x.done=true;t+=x.amt}});armed='';save();R();toast('Saldado: +'+n(t)+' USD a tus fondos')}else{armed='bk'+id;R();setTimeout(()=>{if(armed==='bk'+id){armed='';R()}},3000)}}
 function gdays(){const m={};D.ops.forEach(o=>{const d=o.at.slice(0,10),g=gain(o),e=m[d]||(m[d]={d,u:0,c:0,n:0});e.u+=g.u;e.c+=g.c;e.n++});return Object.values(m).sort((a,b)=>b.d.localeCompare(a.d))}
-function ganUI(){const L=gdays();if(!L.length)return'';const tq=+D.s.toque||0,G=D.gan||{},T0=L.reduce((a,x)=>({u:a.u+x.u,c:a.c+x.c}),{u:0,c:0});
+function ganUI(){try{return ganUI0()}catch(e){return''}}
+function ganUI0(){const L=gdays();if(!L.length)return'';const tq=+D.s.toque||0,G=D.gan||{},T0=L.reduce((a,x)=>({u:a.u+x.u,c:a.c+x.c}),{u:0,c:0});
  return `<h3>Ganancias día a día</h3><div class="card" style="padding:4px 14px">${L.slice(0,30).map(x=>{const g=G[x.d],same=g&&Math.abs(g.u-x.u)<.005&&Math.abs(g.c-x.c)<.5;
  return `<div class="it"><div><b>${esc(new Date(x.d+'T12:00').toLocaleDateString('es',{weekday:'short',day:'numeric',month:'short'}))}</b><div class="mut">${x.n} operaciones</div></div><div style="text-align:right"><div class="num pos">${n(x.u)} USD</div><div class="mut ${x.c<0?'neg':''}">${n(x.c,0)} CUP</div>${tq?`<div class="mut">≈ ${n(x.u+x.c/tq)} USD en total</div>`:''}<button class="btn alt sm" style="margin-top:6px" onclick="ganSave('${x.d}')">${same?'Cuadre guardado ✓':g?'Actualizar cuadre':'Guardar cuadre'}</button></div></div>`}).join('')}<div class="row" style="padding:10px 0"><b>Total</b><span class="num">${n(T0.u)} USD · ${n(T0.c,0)} CUP</span></div></div>`}
 function ganSave(d){const x=gdays().find(y=>y.d===d);if(!x)return;D.gan=D.gan||{};D.gan[d]={u:x.u,c:x.c,n:x.n,at:nowISO()};save();R();toast('Cuadre del día guardado')}
@@ -198,12 +201,14 @@ const aiGet=()=>{try{return Object.assign({key:'',model:AIMODEL,data:false},JSON
 const getP=()=>{try{return JSON.parse(localStorage.getItem(PK))||[]}catch(e){return[]}};
 const setP=l=>{try{localStorage.setItem(PK,JSON.stringify(l))}catch(e){toast('No hay espacio para guardar el cambio')}};
 function runP(p){try{const o=document.getElementById('pc-'+p.id);if(o)o.remove();if(p.css){const st=document.createElement('style');st.id='pc-'+p.id;st.textContent=p.css;document.head.appendChild(st)}if(p.js)(0,eval)(p.js);return''}catch(e){const o=document.getElementById('pc-'+p.id);if(o)o.remove();return String(e&&e.message||e)}}
-function smoke(){const V={home,ops,con,pen,calc};Object.keys(V).forEach(k=>{V[k]();if(k==='ops')opl()})}
-function boot(){const fl='mi-caja-boot',seg=/[?&]seguro/.test(location.search);let L=getP();
- if(seg||localStorage.getItem(fl)){if(!seg){L.forEach(p=>p.on=false);setP(L);toast('El último cambio falló: se desactivaron los cambios del bot')}localStorage.removeItem(fl);th();R();return}
- localStorage.setItem(fl,'1');L.filter(p=>p.on).forEach(p=>{const e=runP(p);if(e){p.on=false;p.err=e}});setP(L);th();
- try{smoke();R()}catch(e){L.forEach(p=>p.on=false);setP(L);localStorage.removeItem(fl);location.reload();return}
- localStorage.removeItem(fl)}
+function smoke(){const t0=tab,bad=[];['home','ops','con','pen','calc'].forEach(k=>{tab=k;try{R()}catch(e){bad.push(k+': '+(e&&e.message||e))}});tab=t0;return bad}
+function boot(){const fl='mi-caja-boot',rl='mi-caja-rl',seg=/[?&]seguro/.test(location.search);let L=getP();
+ const show=e=>{const v=$('#v');if(v)v.innerHTML='<div class="card"><b>La app no pudo iniciar</b><div class="mut" style="margin:6px 0">'+esc(String(e&&e.message||e))+'</div></div>'};
+ if(seg||localStorage.getItem(fl)){if(!seg){L.forEach(p=>p.on=false);setP(L);toast('El último cambio falló: se desactivaron los cambios del bot')}localStorage.removeItem(fl);th();try{R()}catch(e){show(e)}return}
+ localStorage.setItem(fl,'1');L.filter(p=>p.on).forEach(p=>{const e=runP(p);if(e){p.on=false;p.err=e}});setP(L);th();const act=L.some(p=>p.on);
+ try{R()}catch(e){localStorage.removeItem(fl);let ya=false;try{ya=sessionStorage.getItem(rl)}catch(x){}
+  if(act&&!ya){L.forEach(p=>p.on=false);setP(L);try{sessionStorage.setItem(rl,'1')}catch(x){}location.reload();return}show(e);return}
+ try{sessionStorage.removeItem(rl)}catch(x){}localStorage.removeItem(fl)}
 const AISYS=['Eres el asistente integrado de «Mi caja», una app web para móvil (PWA que funciona sin internet, un solo index.html con JavaScript clásico y datos guardados en localStorage) con la que su dueño lleva su caja: compra y venta de USD, remesas, pendientes, contactos, bancos y ganancias por día.',
 'Tu trabajo es ayudarle a arreglar, cambiar o ampliar CUALQUIER aspecto de la app. Habla en español, corto y claro, en términos de lo que él verá en pantalla, sin jerga técnica.',
 'Cuando haga falta modificar algo, llama a la herramienta proponer_cambio. El usuario ve una explicación y decide con un botón si lo aplica; nunca digas que ya está aplicado.',
@@ -234,9 +239,9 @@ async function aiSend(){const el=$('#ai-t'),t=((el&&el.value)||'').trim();if(!t|
  catch(e){AIM.push({r:'a',err:true,t:'⚠ '+(/Failed to fetch|NetworkError/i.test(String(e.message))?'No pude conectar. ¿Hay internet?':e.message)})}
  aiBusy=false;aiM()}
 function aiOk(i){const m=AIM[i],p=m&&m.p;if(!p||p.estado!=='pend')return;try{localStorage.setItem(SNAP,JSON.stringify(D))}catch(e){}
- if(p.tipo==='permanente'){const o={id:'p'+Date.now(),title:p.titulo,why:p.explicacion,css:p.css||'',js:p.js||'',on:true,at:nowISO()},e=runP(o);
+ if(p.tipo==='permanente'){const base=smoke().map(x=>x.split(':')[0]),o={id:'p'+Date.now(),title:p.titulo,why:p.explicacion,css:p.css||'',js:p.js||'',on:true,at:nowISO()},e=runP(o);
   if(e){p.estado='err';p.err=e;aiM();return}
-  try{smoke();R()}catch(x){const dd=document.getElementById('pc-'+o.id);if(dd)dd.remove();p.estado='err';p.err='alguna pantalla falló ('+x.message+'). Reiniciando la app…';aiM();setTimeout(()=>location.reload(),2500);return}
+  try{const nb=smoke().filter(x=>!base.includes(x.split(':')[0]));if(nb.length)throw new Error(nb[0]);try{R()}catch(y){if(!base.includes(tab))throw y}}catch(x){const dd=document.getElementById('pc-'+o.id);if(dd)dd.remove();p.estado='err';p.err='alguna pantalla falló ('+x.message+'). Reiniciando la app…';aiM();setTimeout(()=>location.reload(),2500);return}
   const L=getP();L.push(o);setP(L)}
  else{const bk=JSON.stringify(D);let e='';try{(0,eval)(p.js||'')}catch(x){e=String(x.message||x)}
   if(!e){try{save();R()}catch(x){e=String(x.message||x)}}
