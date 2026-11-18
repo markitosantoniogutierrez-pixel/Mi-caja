@@ -45,15 +45,16 @@ nav button.on{color:var(--acc);font-weight:700;background:color-mix(in srgb,var(
 .btn.b-compra{border-left:4px solid var(--c-compra)}.btn.b-venta{border-left:4px solid var(--c-venta)}.btn.b-rUS,.btn.b-rEU{border-left:4px solid var(--c-rem)}.btn.b-ing{border-left:4px solid var(--c-ing)}
 .fx{display:flex;gap:6px;align-items:center}.fx input{flex:1;min-width:0}.fx button{margin-top:4px}
 </style><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="apple-touch-icon.png"><meta name="theme-color" content="#1E4FD8"><meta name="apple-mobile-web-app-title" content="Mi caja"></head><body>
-<header><h1>Mi caja</h1><button class="ic" onclick="cfg()" aria-label="Ajustes">⚙</button></header>
+<header><h1>Mi caja</h1><span><button class="ic" onclick="ai()" aria-label="Asistente">🤖</button><button class="ic" onclick="cfg()" aria-label="Ajustes">⚙</button></span></header>
 <main id="v"></main>
 <nav id="nv"></nav>
 <div id="ov" onclick="if(event.target===this)closeS()"><div id="sh"></div></div>
 <div id="toast"></div>
 <script>
 const $=s=>document.querySelector(s);
-let D={s:{theme:'system',toque:0,tAt:'',pUS:2,pEU:3,cUSD:0,cCUP:0},ops:[],con:[],pen:[]},tab='home',q='',armed='',cu='',cc='';
-try{const r=localStorage.getItem('mi-caja-v1');if(r){const j=JSON.parse(r);D={s:Object.assign(D.s,j.s||{}),ops:j.ops||[],con:j.con||[],pen:j.pen||[],cuad:j.cuad||[]}}}catch(e){}
+const BK0=()=>[{id:'b1',name:'Banco 1'},{id:'b2',name:'Banco 2'},{id:'b3',name:'Banco 3'}],okB=b=>Array.isArray(b)&&b.length===3?b:BK0();
+let D={s:{theme:'system',toque:0,tAt:'',pUS:2,pEU:3,cUSD:0,cCUP:0},ops:[],con:[],pen:[],banks:BK0(),gan:{}},tab='home',q='',armed='',cu='',cc='';
+try{const r=localStorage.getItem('mi-caja-v1');if(r){const j=JSON.parse(r);D={s:Object.assign(D.s,j.s||{}),ops:j.ops||[],con:j.con||[],pen:j.pen||[],cuad:j.cuad||[],banks:okB(j.banks),gan:j.gan||{}}}}catch(e){}
 const save=()=>{try{localStorage.setItem('mi-caja-v1',JSON.stringify(D));return true}catch(e){toast('No se pudo guardar: sin espacio. Haz una copia de seguridad.');return false}};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const n=(v,d=2)=>(+v||0).toLocaleString('es',{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -88,16 +89,30 @@ function home(){
  <h3>Hoy</h3><div class="card"><div class="row"><span>Operaciones</span><span class="num">${hoy.length}</span></div>
  <div class="row"><span>Ganancia en remesas</span><span class="num pos">${n(gu)} USD</span></div>
  <div class="row"><span>Margen vs. toque</span><span class="num ${gc<0?'neg':'pos'}">${n(gc,0)} CUP</span></div></div>
- <h3>Registrar</h3><div class="grid">${Object.keys(T).map(t=>`<button class="btn alt b-${t}" onclick="opForm('${t}')">${T[t]}</button>`).join('')}</div>`;
+ <h3>Registrar</h3><div class="grid">${Object.keys(T).map(t=>`<button class="btn alt b-${t}" onclick="opForm('${t}')">${T[t]}</button>`).join('')}</div>${ganUI()}`;
 }
 function ft(){const b=bal();let u=b.u,c=b.c;for(const p of D.pen)if(!p.done){const s=p.dir==='me'?1:-1;if(p.cur==='CUP')c+=s*p.amt;else u+=s*p.amt}return{u,c}}
 function dl(){const d=txt('f-d'),L=$('#cl');if(L)L.innerHTML=D.con.filter(c=>(c.tipo||'cliente')===d).map(c=>`<option value="${esc(c.name)}">`).join('')}
+const bkNm=p=>{const b=p.bk&&D.banks.find(x=>x.id===p.bk);return b?b.name:''};
+const bkOwe=id=>D.pen.filter(x=>!x.done&&x.bk===id&&x.dir==='me'&&x.cur==='USD').reduce((a,x)=>a+x.amt,0);
+function rsOpts(){const L=D.con.filter(c=>c.tipo==='remesero');return L.length?'<option value="">— Elegir remesero —</option>'+L.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join(''):'<option value="">No tienes remeseros guardados</option>'}
+function rsel(v){const e=$('#f-who');if(e&&v)e.value=v}
+function bkUI(){return `<h3>Bancos</h3><div class="card" style="padding:4px 14px">${D.banks.map(b=>`<div class="it"><div><b>${esc(b.name)}</b><div class="mut">Me debe ${n(bkOwe(b.id))} USD</div></div><button class="btn alt sm" onclick="bkName('${b.id}')">Cambiar nombre</button></div>`).join('')}</div>`}
+function bkName(id){const b=D.banks.find(x=>x.id===id);sheet(`<h2>Nombre del banco</h2><label>Nombre<input id="b-n" value="${esc(b.name)}"></label><button class="btn" onclick="saveBk('${id}')">Guardar nombre</button>`)}
+function saveBk(id){const nm=txt('b-n');if(!nm){toast('Escribe el nombre');return}D.banks.find(x=>x.id===id).name=nm;D.pen.forEach(x=>{if(x.bk===id)x.who=nm});save();closeS();R()}
+function bkPen(){return `<h3>Bancos (me deben)</h3><div class="card" style="padding:4px 14px">${D.banks.map(b=>{const o=bkOwe(b.id);return `<div class="it"><div><b>${esc(b.name)}</b></div><div style="text-align:right"><div class="num ${o>.004?'pos':''}">${n(o)} USD</div>${o>.004?`<button class="btn alt sm" style="margin-top:6px" onclick="bkPay('${b.id}')">${armed==='bk'+b.id?'Toca otra vez para saldar':'Saldar deuda'}</button>`:''}</div></div>`}).join('')}</div>`}
+function bkPay(id){if(armed==='bk'+id){let t=0;D.pen.forEach(x=>{if(!x.done&&x.bk===id&&x.dir==='me'){x.done=true;t+=x.amt}});armed='';save();R();toast('Saldado: +'+n(t)+' USD a tus fondos')}else{armed='bk'+id;R();setTimeout(()=>{if(armed==='bk'+id){armed='';R()}},3000)}}
+function gdays(){const m={};D.ops.forEach(o=>{const d=o.at.slice(0,10),g=gain(o),e=m[d]||(m[d]={d,u:0,c:0,n:0});e.u+=g.u;e.c+=g.c;e.n++});return Object.values(m).sort((a,b)=>b.d.localeCompare(a.d))}
+function ganUI(){const L=gdays();if(!L.length)return'';const tq=+D.s.toque||0,G=D.gan||{},T0=L.reduce((a,x)=>({u:a.u+x.u,c:a.c+x.c}),{u:0,c:0});
+ return `<h3>Ganancias día a día</h3><div class="card" style="padding:4px 14px">${L.slice(0,30).map(x=>{const g=G[x.d],same=g&&Math.abs(g.u-x.u)<.005&&Math.abs(g.c-x.c)<.5;
+ return `<div class="it"><div><b>${esc(new Date(x.d+'T12:00').toLocaleDateString('es',{weekday:'short',day:'numeric',month:'short'}))}</b><div class="mut">${x.n} operaciones</div></div><div style="text-align:right"><div class="num pos">${n(x.u)} USD</div><div class="mut ${x.c<0?'neg':''}">${n(x.c,0)} CUP</div>${tq?`<div class="mut">≈ ${n(x.u+x.c/tq)} USD en total</div>`:''}<button class="btn alt sm" style="margin-top:6px" onclick="ganSave('${x.d}')">${same?'Cuadre guardado ✓':g?'Actualizar cuadre':'Guardar cuadre'}</button></div></div>`}).join('')}<div class="row" style="padding:10px 0"><b>Total</b><span class="num">${n(T0.u)} USD · ${n(T0.c,0)} CUP</span></div></div>`}
+function ganSave(d){const x=gdays().find(y=>y.d===d);if(!x)return;D.gan=D.gan||{};D.gan[d]={u:x.u,c:x.c,n:x.n,at:nowISO()};save();R();toast('Cuadre del día guardado')}
 function cuad(id){const c=D.con.find(x=>x.id===id);if(!c)return;
- const k=c.name.toLowerCase(),pn=D.pen.filter(x=>!x.done&&x.who.toLowerCase()===k),sum=(d,u)=>pn.filter(x=>x.dir===d&&x.cur===u).reduce((s,x)=>s+x.amt,0),
+ const k=c.name.toLowerCase(),pn=D.pen.filter(x=>!x.done&&!x.bk&&x.who.toLowerCase()===k),sum=(d,u)=>pn.filter(x=>x.dir===d&&x.cur===u).reduce((s,x)=>s+x.amt,0),
  dbU=sum('debo','USD'),meU=sum('me','USD'),dbC=sum('debo','CUP'),meC=sum('me','CUP'),nu=dbU-meU,nc=dbC-meC,
  line=(x,u)=>{const r=Math.round(Math.abs(x));if(Math.abs(x)<.005)return`<div class="num big pos">A mano en ${u}</div>`;return`<div class="num big ${x>0?'neg':'pos'}">${x>0?'Le debes':'Te debe'} ${n(r,0)} ${u}</div>`+(Math.abs(Math.abs(x)-r)>=.005?`<div class="mut">Exacto: ${n(Math.abs(x),2)} ${u}</div>`:'')};
  sheet(`<h2>Cuadre con ${esc(c.name)}</h2><div class="card">${line(nu,'USD')}${Math.abs(nc)>=.005?`<div style="margin-top:8px">${line(nc,'CUP')}</div>`:''}</div>${pn.length?`<div class="card"><div class="row"><span>Le debo</span><span class="num neg">${n(dbU)} USD${dbC?' · '+n(dbC,0)+' CUP':''}</span></div><div class="row"><span>Me debe</span><span class="num pos">${n(meU)} USD${meC?' · '+n(meC,0)+' CUP':''}</span></div></div><div class="mut" style="margin-bottom:10px">Al marcar como saldado se cierran las ${pn.length} cuentas abiertas con ${esc(c.name)} y tu efectivo se ajusta.</div><button class="btn" onclick="cuadOk(${id})">Marcar todo como saldado</button>`:'<div class="mut">No hay cuentas abiertas con este contacto.</div>'}`)}
-function cuadOk(id){const k=D.con.find(x=>x.id===id).name.toLowerCase();D.pen.forEach(x=>{if(!x.done&&x.who.toLowerCase()===k)x.done=true});save();closeS();R();toast('Cuadre hecho')}
+function cuadOk(id){const k=D.con.find(x=>x.id===id).name.toLowerCase();D.pen.forEach(x=>{if(!x.done&&!x.bk&&x.who.toLowerCase()===k)x.done=true});save();closeS();R();toast('Cuadre hecho')}
 function vis(id){const p=D.pen.find(x=>x.id===id)||D.ops.find(x=>x.id===id);if(p&&p.img)sheet(`<h2>${esc(p.who)}</h2><img src="${p.img}" alt="Captura" style="max-width:100%;border-radius:10px">`)}
 function sg(id,t){const e=$('#'+id),v=e.value.trim();e.value=v[0]==='-'?v.slice(1):'-'+v;if(t)pv(t)}
 function ctd(){let mu=0,mc=0,du=0,dc=0;for(const p of D.pen)if(!p.done){if(p.dir==='me'){if(p.cur==='CUP')mc+=p.amt;else mu+=p.amt}else{if(p.cur==='CUP')dc+=p.amt;else du+=p.amt}}
@@ -115,43 +130,43 @@ function cq(){cu=$('#cu').value;cc=$('#cc').value;const b=bal(),el=$('#cqr');if(
  el.innerHTML=(cu!==''?'USD: '+f(du,'USD',2)+'. ':'')+(cc!==''?'CUP: '+f(dc,'CUP',0):'')}
 function ingForm(){sheet(`<h2>Otro ingreso</h2><label>Concepto<input id="f-note" placeholder="Ej: venta de recarga"></label><div class="grid"><label>Monto<input id="f-usd" type="number" inputmode="decimal" step="any"></label><label>Moneda<select id="f-cur"><option>USD</option><option>CUP</option></select></label></div><label>Fecha y hora<input id="f-at" type="datetime-local" value="${nowISO()}"></label><button class="btn" onclick="saveOp('ing')">Guardar ingreso</button>`)}
 function opForm(t){if(t==='ing')return ingForm();const r=t[0]==='r',p=t==='rUS'?D.s.pUS:D.s.pEU;
- sheet(`<h2>${T[t]}</h2>${r?`<label>Entregar a<select id="f-d" onchange="dl();pv('${t}')"><option value="cliente">Cliente</option><option value="remesero">Remesero</option></select></label>`:''}<label>${r?'Nombre':'Contacto'}<input id="f-who" list="cl" autocomplete="off" placeholder="Nombre"></label><datalist id="cl">${D.con.map(c=>`<option value="${esc(c.name)}">`).join('')}</datalist>
+ sheet(`<h2>${T[t]}</h2>${r?`<label>Entregar a<select id="f-d" onchange="dl();pv('${t}')"><option value="cliente">Cliente</option><option value="remesero">Remesero</option></select></label><label>Remesero (de tus contactos)<select id="f-rs" onchange="rsel(this.value)">${rsOpts()}</select></label>`:''}<label>${r?'Nombre':'Contacto'}<input id="f-who" list="cl" autocomplete="off" placeholder="Nombre"></label><datalist id="cl">${D.con.map(c=>`<option value="${esc(c.name)}">`).join('')}</datalist>
  <label>${r?'Dinero enviado (USD)':'Monto en USD'}<input id="f-usd" type="number" inputmode="decimal" step="any" oninput="pv('${t}')"></label>
  ${r?'':`<label>Tasa (CUP por USD)<input id="f-rate" type="number" inputmode="decimal" step="any" value="${D.s.toque||''}" oninput="pv('${t}')"></label>`}
  ${r?`<label>Porciento por encima que me pagan (%)<div class="fx"><input id="f-p" type="text" inputmode="decimal" value="${p}" oninput="pv('${t}')"><button type="button" class="btn alt sm" onclick="sg('f-p','${t}')">±</button></div></label><label>Porciento por encima que le pago (%)<div class="fx"><input id="f-pp" type="text" inputmode="decimal" value="${D.s.lastPP??''}" oninput="pv('${t}')"><button type="button" class="btn alt sm" onclick="sg('f-pp','${t}')">±</button></div></label>`:''}
- <label>Fecha y hora<input id="f-at" type="datetime-local" value="${nowISO()}"></label>${r?'':'<label>Nota<input id="f-note"></label>'}
- <div class="pv" id="pv"></div><button class="btn" onclick="saveOp('${t}')">Guardar operación</button>`)}
+ ${r?`<label>Banco que me paga<select id="f-bk"><option value="">— Sin banco —</option>${D.banks.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')}</select></label>`:''}<label>Fecha y hora<input id="f-at" type="datetime-local" value="${nowISO()}"></label>${r?'':'<label>Nota<input id="f-note"></label>'}
+ ${t==='rUS'?'':'<div class="pv" id="pv"></div>'}<button class="btn" onclick="saveOp('${t}')">Guardar operación</button>`)}
 function pv(t){const u=val('f-usd'),r=val('f-rate'),p=val('f-p'),pp=val('f-pp'),d=txt('f-d'),c=u*r;
- $('#pv').innerHTML=t[0]==='r'?`${d==='remesero'?'Le debes al remesero (pendiente)':'Sale de tus fondos'}: ${n(u*(1+pp/100))} USD<br>Te deben: ${n(u*(1+p/100))} USD<br>Ganas: <b class="${p<pp?'neg':'pos'}">${n(u*(p-pp)/100)} USD</b>`:(t==='compra'?`Pagas ${n(c,0)} CUP`:`Cobras ${n(c,0)} CUP`)}
+ if(!$('#pv'))return;$('#pv').innerHTML=t[0]==='r'?`${d==='remesero'?'Le debes al remesero (pendiente)':'Sale de tus fondos'}: ${n(u*(1+pp/100))} USD<br>Te deben: ${n(u*(1+p/100))} USD<br>Ganas: <b class="${p<pp?'neg':'pos'}">${n(u*(p-pp)/100)} USD</b>`:(t==='compra'?`Pagas ${n(c,0)} CUP`:`Cobras ${n(c,0)} CUP`)}
 function saveOp(t){const usd=val('f-usd'),rate=val('f-rate'),who=txt('f-who');
  const r=t[0]==='r',g=t==='ing';if(usd<=0||(!r&&!g&&rate<=0)){toast(r?'Escribe el dinero enviado':g?'Escribe el monto':'Escribe el monto y la tasa');return}
  if(r&&!who){toast('Escribe el nombre');return}
  if(who&&!D.con.some(c=>c.name.toLowerCase()===who.toLowerCase()))D.con.push({id:Date.now()+1,name:who,tel:'',note:'',tipo:r?txt('f-d'):'cliente'});
- const id=Date.now(),p=r?val('f-p'):0,pp=r?val('f-pp'):0;if(r)D.s.lastPP=pp;const dest=r?txt('f-d'):'',cur=g?txt('f-cur'):'USD';D.ops.unshift({id,t,who,usd,rate,p,pp,dest,cur,at:txt('f-at')||nowISO(),note:txt('f-note'),tq:+D.s.toque||0});
- if(r){const nt=T[t]+' de '+n(usd)+' USD (me pagan +'+n(p)+'%, pago +'+n(pp)+'%)';D.pen.unshift({id:id+2,rid:id,dir:'me',who,cur:'USD',amt:+(usd*(1+p/100)).toFixed(2),due:'',note:nt,done:false});if(dest==='remesero')D.pen.unshift({id:id+3,rid:id,dir:'debo',who,cur:'USD',amt:+(usd*(1+pp/100)).toFixed(2),due:'',note:nt,done:false})}
+ const id=Date.now(),p=r?val('f-p'):0,pp=r?val('f-pp'):0;if(r)D.s.lastPP=pp;const bk=r?txt('f-bk'):'',bn=(D.banks.find(b=>b.id===bk)||{}).name||'',dest=r?txt('f-d'):'',cur=g?txt('f-cur'):'USD';D.ops.unshift({id,t,who,usd,rate,p,pp,dest,cur,bk:bk||undefined,at:txt('f-at')||nowISO(),note:txt('f-note'),tq:+D.s.toque||0});
+ if(r){const nt=T[t]+' de '+n(usd)+' USD (me pagan +'+n(p)+'%, pago +'+n(pp)+'%)';D.pen.unshift({id:id+2,rid:id,dir:'me',who:bn||who,bk:bk||undefined,cur:'USD',amt:+(usd*(1+p/100)).toFixed(2),due:'',note:nt+(bn?' · remesero: '+who:''),done:false});if(dest==='remesero')D.pen.unshift({id:id+3,rid:id,dir:'debo',who,cur:'USD',amt:+(usd*(1+pp/100)).toFixed(2),due:'',note:nt,done:false})}
  save();closeS();toast('Operación guardada');R()}
 function ops(){return `<h2>Operaciones</h2><input id="q" placeholder="Buscar por contacto o nota" value="${esc(q)}" oninput="q=this.value;opl()" style="margin-bottom:12px"><div id="ol"></div>`}
 function opl(){const s=q.toLowerCase(),L=D.ops.filter(o=>!s||(o.who+' '+o.note+' '+T[o.t]).toLowerCase().includes(s)).sort((a,b)=>b.at.localeCompare(a.at));
  if(!L.length){$('#ol').innerHTML='<div class="card mut">Aún no hay operaciones. Regístralas desde Inicio.</div>';return}
  let h='',d='';for(const o of L){const day=o.at.slice(0,10);if(day!==d){d=day;h+=`<h3>${esc(new Date(day+'T12:00').toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'}))}</h3>`}
- h+=`<div class="card" style="padding:4px 14px;margin-bottom:6px;border-left:4px solid ${o.t==='compra'?'var(--c-compra)':o.t==='venta'?'var(--c-venta)':o.t==='ing'?'var(--c-ing)':'var(--c-rem)'}"><div class="it"><div><b>${T[o.t]}</b><div class="mut">${esc(o.at.slice(11))} · ${esc(o.who||'Sin contacto')}${o.dest?' ('+o.dest+')':''}${o.note?' · '+esc(o.note):''}</div></div>
+ h+=`<div class="card" style="padding:4px 14px;margin-bottom:6px;border-left:4px solid ${o.t==='compra'?'var(--c-compra)':o.t==='venta'?'var(--c-venta)':o.t==='ing'?'var(--c-ing)':'var(--c-rem)'}"><div class="it"><div><b>${T[o.t]}</b><div class="mut">${esc(o.at.slice(11))} · ${esc(o.who||'Sin contacto')}${o.dest?' ('+o.dest+')':''}${o.bk?' · '+((D.banks.find(b=>b.id===o.bk)||{}).name||''):''}${o.note?' · '+esc(o.note):''}</div></div>
  <div style="text-align:right"><div class="num">${n(o.usd)} ${o.t==='ing'?(o.cur||'USD'):'USD'}</div>${o.t[0]==='r'?`<div class="mut">cliente recibe ${n(o.usd*(1+(o.pp||0)/100))} · te deben ${n(o.usd*(1+o.p/100))} USD</div><div class="mut ${o.p<(o.pp||0)?'neg':'pos'}">ganas ${n(o.usd*(o.p-(o.pp||0))/100)} USD (${n(o.p)}% − ${n(o.pp||0)}%)</div>`:o.t==='ing'?'':`<div class="mut">${n(o.usd*o.rate,0)} CUP a ${n(o.rate)}</div>`}
  <button class="btn alt sm" style="margin-top:6px;display:${o.img?'inline-block':'none'}" onclick="vis(${o.id})">Captura</button> <button class="btn alt sm" style="margin-top:6px;display:${o.t[0]==='r'?'inline-block':'none'}" onclick="${o.t[0]==='r'?`editPct(${o.id})`:'void 0'}">Editar %</button> <button class="btn alt sm" style="color:var(--neg);margin-top:6px" onclick="del('ops',${o.id})">${armed==='ops'+o.id?'Toca otra vez para eliminar':'Eliminar'}</button></div></div></div>`}
  $('#ol').innerHTML=h}
 function del(k,id){if(armed===k+id){D[k]=D[k].filter(x=>x.id!==id);if(k==='ops')D.pen=D.pen.filter(p=>p.rid!==id);armed='';save();R()}else{armed=k+id;R();setTimeout(()=>{if(armed===k+id){armed='';R()}},3000)}}
 function con(){const L=[...D.con].sort((a,b)=>a.name.localeCompare(b.name));
- return `<div class="row"><h2>Contactos</h2><button class="btn sm" onclick="conForm()">Nuevo</button></div>`+(L.length?L.map(c=>{const o=D.ops.filter(x=>x.who.toLowerCase()===c.name.toLowerCase()),tot=o.reduce((s,x)=>s+x.usd,0),pe=D.pen.filter(p=>!p.done&&p.who.toLowerCase()===c.name.toLowerCase()).length;
+ return `<div class="row"><h2>Contactos</h2><button class="btn sm" onclick="conForm()">Nuevo</button></div>`+bkUI()+'<h3>Personas</h3>'+(L.length?L.map(c=>{const o=D.ops.filter(x=>x.who.toLowerCase()===c.name.toLowerCase()),tot=o.reduce((s,x)=>s+x.usd,0),pe=D.pen.filter(p=>!p.done&&!p.bk&&p.who.toLowerCase()===c.name.toLowerCase()).length;
  return `<div class="card"><div class="row"><b>${esc(c.name)} <span class="tag">${c.tipo||'cliente'}</span></b><span><button class="btn sm" onclick="cuad(${c.id})">Cuadrar ahora</button> <button class="ic" style="font-size:13px" onclick="del('con',${c.id})">${armed==='con'+c.id?'¿Borrar?':'Borrar'}</button></span></div>
  <div class="mut">${esc(c.tel)}${c.note?' · '+esc(c.note):''}</div><div class="mut">${o.length} operaciones · ${n(tot)} USD${pe?' · '+pe+' pendientes':''}</div></div>`}).join(''):'<div class="card mut">Agrega a quienes les pagas o con quienes haces negocio.</div>')}
 function conForm(){sheet(`<h2>Nuevo contacto</h2><label>Nombre<input id="c-n"></label><label>Teléfono<input id="c-t" type="tel"></label><label>Tipo<select id="c-k"><option value="cliente">Cliente</option><option value="remesero">Remesero</option></select></label><label>Nota<input id="c-o"></label><button class="btn" onclick="saveCon()">Guardar contacto</button>`)}
 function saveCon(){const name=txt('c-n');if(!name){toast('Escribe el nombre');return}D.con.push({id:Date.now(),name,tel:txt('c-t'),note:txt('c-o'),tipo:txt('c-k')});save();closeS();R()}
 function pen(){const op=D.pen.filter(p=>!p.done),dn=D.pen.filter(p=>p.done),sum=(d,c)=>op.filter(p=>p.dir===d&&p.cur===c).reduce((s,p)=>s+p.amt,0);
- const row=p=>`<div class="it"><div><b>${esc(p.who||'Sin nombre')}</b><div class="mut">${esc(p.note||'')}${p.due?' · vence '+esc(p.due):''}</div></div><div style="text-align:right"><div class="num ${p.dir==='debo'?'neg':'pos'}">${n(p.amt,p.cur==='CUP'?0:2)} ${p.cur}</div>
+ const row=p=>`<div class="it"><div><b>${esc(bkNm(p)||p.who||'Sin nombre')}</b><div class="mut">${esc(p.note||'')}${p.due?' · vence '+esc(p.due):''}</div></div><div style="text-align:right"><div class="num ${p.dir==='debo'?'neg':'pos'}">${n(p.amt,p.cur==='CUP'?0:2)} ${p.cur}</div>
  <button class="btn alt sm" onclick="vis(${p.id})" style="${p.img?'':'display:none'}">Captura</button> <button class="btn alt sm" onclick="done(${p.id})">${p.done?'Reabrir':'Saldar'}</button> <button class="ic" style="font-size:13px" onclick="del('pen',${p.id})">${armed==='pen'+p.id?'¿Borrar?':'Borrar'}</button></div></div>`;
  return `<div class="row"><h2>Pendientes</h2><button class="btn sm" onclick="penForm()">Nueva</button></div>
  <div class="grid"><div class="card"><div class="mut">Me deben</div><div class="num pos">${n(sum('me','USD'))} USD</div><div class="num pos">${n(sum('me','CUP'),0)} CUP</div></div>
  <div class="card"><div class="mut">Debo</div><div class="num neg">${n(sum('debo','USD'))} USD</div><div class="num neg">${n(sum('debo','CUP'),0)} CUP</div></div></div>
- <div class="card" style="padding:4px 14px">${op.length?op.map(row).join(''):'<div class="mut" style="padding:10px 0">Sin cuentas pendientes.</div>'}</div>
+ ${bkPen()}<h3>Cuentas abiertas</h3><div class="card" style="padding:4px 14px">${op.length?op.map(row).join(''):'<div class="mut" style="padding:10px 0">Sin cuentas pendientes.</div>'}</div>
  ${dn.length?`<h3>Saldadas</h3><div class="card" style="padding:4px 14px">${dn.map(row).join('')}</div>`:''}`}
 function done(id){const p=D.pen.find(x=>x.id===id);p.done=!p.done;save();R();toast(p.done?'Saldada: efectivo actualizado':'Reabierta: efectivo revertido')}
 function penForm(){sheet(`<h2>Nueva cuenta pendiente</h2><label>Tipo<select id="p-d"><option value="me">Me deben</option><option value="debo">Debo</option></select></label>
@@ -175,8 +190,75 @@ function cfg(){sheet(`<h2>Ajustes</h2><label>Modo<select id="s-t" onchange="D.s.
  <button class="btn" onclick="saveCfg()">Guardar ajustes</button><h3>Copia de seguridad</h3><div class="mut" style="margin-bottom:6px">Copia este texto y guárdalo en Notas. Para restaurar, pégalo aquí y toca Restaurar.</div>
  <textarea id="s-j" rows="5">${esc(JSON.stringify(D))}</textarea><button class="btn alt" style="margin-top:8px" onclick="restore()">Restaurar copia</button>`);$('#s-t').value=D.s.theme}
 function saveCfg(){Object.assign(D.s,{pUS:val('s-a'),pEU:val('s-b'),cUSD:val('s-u'),cCUP:val('s-c')});save();closeS();R();toast('Ajustes guardados')}
-function restore(){try{const j=JSON.parse($('#s-j').value);if(!j.ops||!j.s)throw 0;D={s:Object.assign(D.s,j.s),ops:j.ops,con:j.con||[],pen:j.pen||[],cuad:j.cuad||[]};save();th();closeS();R();toast('Copia restaurada')}catch(e){toast('El texto no es una copia válida')}}
+function restore(){try{const j=JSON.parse($('#s-j').value);if(!j.ops||!j.s)throw 0;D={s:Object.assign(D.s,j.s),ops:j.ops,con:j.con||[],pen:j.pen||[],cuad:j.cuad||[],banks:okB(j.banks),gan:j.gan||{}};save();th();closeS();R();toast('Copia restaurada')}catch(e){toast('El texto no es una copia válida')}}
+/*AI-START*/
+const AK='mi-caja-ai',PK='mi-caja-patches',SNAP='mi-caja-pre-patch',AIMODEL='claude-sonnet-5-5';
+let AIM=[],aiV='chat',aiBusy=false;
+const aiGet=()=>{try{return Object.assign({key:'',model:AIMODEL,data:false},JSON.parse(localStorage.getItem(AK))||{})}catch(e){return{key:'',model:AIMODEL,data:false}}};
+const getP=()=>{try{return JSON.parse(localStorage.getItem(PK))||[]}catch(e){return[]}};
+const setP=l=>{try{localStorage.setItem(PK,JSON.stringify(l))}catch(e){toast('No hay espacio para guardar el cambio')}};
+function runP(p){try{const o=document.getElementById('pc-'+p.id);if(o)o.remove();if(p.css){const st=document.createElement('style');st.id='pc-'+p.id;st.textContent=p.css;document.head.appendChild(st)}if(p.js)(0,eval)(p.js);return''}catch(e){const o=document.getElementById('pc-'+p.id);if(o)o.remove();return String(e&&e.message||e)}}
+function smoke(){const V={home,ops,con,pen,calc};Object.keys(V).forEach(k=>{V[k]();if(k==='ops')opl()})}
+function boot(){const fl='mi-caja-boot',seg=/[?&]seguro/.test(location.search);let L=getP();
+ if(seg||localStorage.getItem(fl)){if(!seg){L.forEach(p=>p.on=false);setP(L);toast('El último cambio falló: se desactivaron los cambios del bot')}localStorage.removeItem(fl);th();R();return}
+ localStorage.setItem(fl,'1');L.filter(p=>p.on).forEach(p=>{const e=runP(p);if(e){p.on=false;p.err=e}});setP(L);th();
+ try{smoke();R()}catch(e){L.forEach(p=>p.on=false);setP(L);localStorage.removeItem(fl);location.reload();return}
+ localStorage.removeItem(fl)}
+const AISYS=['Eres el asistente integrado de «Mi caja», una app web para móvil (PWA que funciona sin internet, un solo index.html con JavaScript clásico y datos guardados en localStorage) con la que su dueño lleva su caja: compra y venta de USD, remesas, pendientes, contactos, bancos y ganancias por día.',
+'Tu trabajo es ayudarle a arreglar, cambiar o ampliar CUALQUIER aspecto de la app. Habla en español, corto y claro, en términos de lo que él verá en pantalla, sin jerga técnica.',
+'Cuando haga falta modificar algo, llama a la herramienta proponer_cambio. El usuario ve una explicación y decide con un botón si lo aplica; nunca digas que ya está aplicado.',
+'CÓMO FUNCIONAN LOS CAMBIOS:',
+'- tipo "permanente": el css y el js se cargan después del código original, en ámbito global, cada vez que se abre la app. Para cambiar el comportamiento, reasigna funciones globales con window.nombre=function(...){...} (por ejemplo window.con=function(){...}), reescribiéndola completa a partir de su versión actual (incluidos los cambios permanentes ya activos) y conservando todo lo que ya hacía. Para envolver la original: const orig=window.con; window.con=function(...a){const h=orig(...a);return h+\"...\"}. NUNCA declares «function con(){}» y la llames a la vez, porque las declaraciones se elevan y se llamaría a sí misma. Usa css para los estilos.',
+'- tipo "una_vez": el js se ejecuta una sola vez (por ejemplo para corregir datos). Termina con save() y R().',
+'- JavaScript clásico, sin módulos ni import. No redeclares con let/const nombres que ya existen en el código original (D, tab, q, armed, cu, cc, T, n, esc, val, txt, save, R, etc.). Sí puedes leer y asignar las variables let existentes.',
+'- Los datos están en D: D.s ajustes, D.ops operaciones, D.con contactos, D.pen pendientes, D.banks bancos, D.gan ganancias guardadas, D.cuad cuadres de caja. Tras cambiar datos usa save() y R().',
+'- La app debe seguir funcionando sin internet: no uses librerías ni recursos externos.',
+'REGLAS: haz el cambio más pequeño que resuelva lo pedido y revísalo mentalmente antes de proponerlo. Nunca borres ni pierdas datos del usuario salvo que lo pida de forma explícita y clara, y avísale antes. No toques la clave de API ni el módulo del asistente. Si algo no está claro, pregunta una sola cosa antes de proponer. Si no puedes hacerlo de forma segura, dilo.',
+'A continuación está el código fuente actual de la app (sin el módulo del asistente).'].join('\n');
+const AITOOL={name:'proponer_cambio',description:'Propone un cambio en la app para que el usuario lo revise y lo aplique con un botón.',input_schema:{type:'object',properties:{titulo:{type:'string',description:'Título corto del cambio'},explicacion:{type:'string',description:'Qué cambia, en lenguaje simple, 1 a 3 frases'},tipo:{type:'string',enum:['permanente','una_vez'],description:'permanente: cambia la app y se vuelve a aplicar al abrirla. una_vez: se ejecuta una sola vez (por ejemplo corregir datos)'},css:{type:'string',description:'CSS opcional (solo permanente)'},js:{type:'string',description:'JavaScript clásico'}},required:['titulo','explicacion','tipo']}};
+async function aiSrc(){let t='';try{t=await(await fetch('index.html')).text()}catch(e){t='<!doctype html>'+document.documentElement.outerHTML}return t.replace(/\/\*AI-START\*\/[\s\S]*?\/\*AI-END\*\//,'/* (módulo del asistente omitido) */')}
+function aiCtx(){const P=getP().filter(p=>p.on);let s='CAMBIOS PERMANENTES ACTIVOS ('+P.length+'):\n'+(P.length?P.map(p=>'### '+p.title+'\n'+(p.css?'/* CSS */\n'+p.css+'\n':'')+(p.js?'/* JS */\n'+p.js:'')).join('\n\n'):'ninguno');
+ if(aiGet().data){let dj=JSON.stringify(Object.assign({},D,{ops:D.ops.slice(0,150)}),(k,v)=>k==='img'?undefined:v);if(dj.length>60000)dj=dj.slice(0,60000)+'…(recortado)';s+='\n\nDATOS ACTUALES (D):\n'+dj}else s+='\n\nEl usuario no ha permitido ver sus datos.';return s}
+async function aiSend(){const el=$('#ai-t'),t=((el&&el.value)||'').trim();if(!t||aiBusy)return;const c=aiGet();
+ if(!c.key){toast('Primero pon tu clave en Ajustes del bot');aiV='ajustes';aiR();return}
+ if(navigator.onLine===false){toast('Necesitas internet para hablar con el bot');return}
+ el.value='';AIM.push({r:'u',t});aiBusy=true;aiM();
+ try{const src=await aiSrc(),msgs=AIM.filter(m=>!m.err).slice(-20).map(m=>({role:m.r==='u'?'user':'assistant',content:(m.t||'')+(m.p?'\n[Propuesta: '+m.p.titulo+' — '+m.p.explicacion+(m.p.estado==='ok'?' (aplicada)':m.p.estado==='no'?' (descartada)':'')+']':'')})).filter(m=>m.content.trim());
+  while(msgs.length&&msgs[0].role!=='user')msgs.shift();
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:c.model,max_tokens:8000,system:[{type:'text',text:AISYS+'\n\n'+src,cache_control:{type:'ephemeral'}},{type:'text',text:aiCtx()}],tools:[AITOOL],messages:msgs})});
+  const j=await r.json();if(!r.ok)throw new Error(r.status===401?'La clave de API no es válida.':(j.error&&j.error.message)||('Error '+r.status));
+  let tx='';const ps=[];(j.content||[]).forEach(b=>{if(b.type==='text')tx+=b.text;else if(b.type==='tool_use'&&b.name==='proponer_cambio'&&b.input&&b.input.titulo&&b.input.explicacion&&(b.input.js||b.input.css))ps.push(Object.assign({},b.input,{estado:'pend'}))});
+  if(j.stop_reason==='max_tokens')tx+=(tx?'\n':'')+'(La respuesta se cortó. Pídeme el cambio en partes más pequeñas.)';
+  if(tx.trim()||!ps.length)AIM.push({r:'a',t:tx.trim()||'No tengo nada que proponer con eso. ¿Me lo explicas de otra forma?'});
+  ps.forEach(p=>AIM.push({r:'a',t:'',p}))}
+ catch(e){AIM.push({r:'a',err:true,t:'⚠ '+(/Failed to fetch|NetworkError/i.test(String(e.message))?'No pude conectar. ¿Hay internet?':e.message)})}
+ aiBusy=false;aiM()}
+function aiOk(i){const m=AIM[i],p=m&&m.p;if(!p||p.estado!=='pend')return;try{localStorage.setItem(SNAP,JSON.stringify(D))}catch(e){}
+ if(p.tipo==='permanente'){const o={id:'p'+Date.now(),title:p.titulo,why:p.explicacion,css:p.css||'',js:p.js||'',on:true,at:nowISO()},e=runP(o);
+  if(e){p.estado='err';p.err=e;aiM();return}
+  try{smoke();R()}catch(x){const dd=document.getElementById('pc-'+o.id);if(dd)dd.remove();p.estado='err';p.err='alguna pantalla falló ('+x.message+'). Reiniciando la app…';aiM();setTimeout(()=>location.reload(),2500);return}
+  const L=getP();L.push(o);setP(L)}
+ else{const bk=JSON.stringify(D);let e='';try{(0,eval)(p.js||'')}catch(x){e=String(x.message||x)}
+  if(!e){try{save();R()}catch(x){e=String(x.message||x)}}
+  if(e){D=JSON.parse(bk);save();try{R()}catch(x){}p.estado='err';p.err=e;aiM();return}}
+ p.estado='ok';aiM();toast('Cambio aplicado')}
+function aiNo(i){const p=AIM[i]&&AIM[i].p;if(p&&p.estado==='pend'){p.estado='no';aiM()}}
+function aiTog(id){const L=getP(),p=L.find(x=>x.id===id);if(!p)return;p.on=!p.on;delete p.err;setP(L);location.reload()}
+function aiDel(id){if(!confirm('¿Eliminar este cambio del bot?'))return;setP(getP().filter(x=>x.id!==id));location.reload()}
+function aiAll(){if(!confirm('¿Quitar todos los cambios del bot y volver a la app original? Tus datos no se tocan.'))return;setP([]);location.reload()}
+function aiRec(){if(!confirm('Tus datos volverán a como estaban justo antes del último cambio del bot. ¿Seguro?'))return;try{D=JSON.parse(localStorage.getItem(SNAP));save();R();toast('Datos recuperados')}catch(e){toast('No se pudo recuperar')}}
+function ai(){aiV='chat';aiR()}
+function aiR(){const tb=[['chat','Chat'],['cambios','Cambios'],['ajustes','Ajustes del bot']];
+ sheet(`<div class="row"><h2>Asistente</h2><button class="ic" onclick="closeS()" aria-label="Cerrar">✕</button></div><div style="display:flex;gap:6px;margin-bottom:12px">${tb.map(t=>`<button class="btn sm ${aiV===t[0]?'':'alt'}" onclick="aiV='${t[0]}';aiR()">${t[1]}</button>`).join('')}</div>${aiV==='chat'?aiChat():aiV==='cambios'?aiCh():aiCfg()}`);if(aiV==='chat')aiM()}
+function aiChat(){return `<div id="ai-m" style="max-height:46vh;overflow:auto;margin-bottom:10px"></div><textarea id="ai-t" rows="3" placeholder="Cuéntame qué quieres cambiar o arreglar…"></textarea><button id="ai-b" class="btn" style="margin-top:8px" onclick="aiSend()">Enviar</button>`}
+function aiM(){const m=$('#ai-m');if(!m)return;m.innerHTML=(AIM.length?AIM.map(aiB).join(''):'<div class="mut">Puedo cambiar cómo se ve la app, añadir botones o cálculos, arreglar errores y corregir datos. Siempre te enseño el cambio y tú decides si lo aplicas.</div>')+(aiBusy?'<div class="mut" style="margin:6px 0">Pensando…</div>':'');m.scrollTop=m.scrollHeight;const b=$('#ai-b');if(b)b.disabled=aiBusy}
+function aiB(m,i){if(m.p){const p=m.p;return `<div class="card" style="border-left:4px solid var(--acc)"><b>${esc(p.titulo)}</b><div class="mut" style="margin:4px 0 8px">${esc(p.explicacion)}</div><div class="mut">${p.tipo==='permanente'?'Cambio permanente de la app':'Se ejecuta una sola vez'}</div><details style="margin:8px 0"><summary class="mut">Ver código</summary><pre style="white-space:pre-wrap;font-size:11px;overflow:auto;max-height:200px">${esc((p.css?'/* CSS */\n'+p.css+'\n':'')+(p.js?'/* JS */\n'+p.js:''))}</pre></details>${p.estado==='pend'?`<div class="grid"><button class="btn" onclick="aiOk(${i})">Aplicar</button><button class="btn alt" onclick="aiNo(${i})">Descartar</button></div>`:p.estado==='ok'?'<div class="pos">✓ Aplicado</div>':p.estado==='no'?'<div class="mut">Descartado</div>':`<div class="neg">No se pudo aplicar: ${esc(p.err||'')}. No se guardó el cambio.</div>`}</div>`}
+ return `<div style="margin:6px 0;display:flex;justify-content:${m.r==='u'?'flex-end':'flex-start'}"><div style="max-width:88%;white-space:pre-wrap;padding:9px 12px;border-radius:14px;${m.r==='u'?'background:var(--acc);color:var(--on)':'background:var(--bg);border:1px solid var(--line)'}">${esc(m.t)}</div></div>`}
+function aiCh(){const L=getP(),sn=localStorage.getItem(SNAP);return (L.length?L.map(p=>`<div class="card"><div class="row"><b>${esc(p.title)}</b><span class="tag">${p.on?'Activado':'Desactivado'}</span></div><div class="mut" style="margin:4px 0 8px">${esc(p.why)}${p.err?' · Error: '+esc(p.err):''}</div><div class="grid"><button class="btn alt sm" onclick="aiTog('${p.id}')">${p.on?'Desactivar':'Activar'}</button><button class="btn alt sm" style="color:var(--neg)" onclick="aiDel('${p.id}')">Eliminar</button></div></div>`).join('')+`<button class="btn alt" onclick="aiAll()">Quitar todos los cambios del bot</button>`:'<div class="card mut">Aún no hay cambios del bot. La app está como la original.</div>')+(sn?`<h3>Datos</h3><button class="btn alt" onclick="aiRec()">Recuperar los datos de antes del último cambio</button>`:'')}
+function aiCfg(){const c=aiGet();return `<div class="mut" style="margin-bottom:10px">El bot usa tu propia clave de API de Anthropic, que se guarda solo en este teléfono. Cada mensaje tiene un pequeño costo y necesita internet. Usa una clave con límite de gasto y no la compartas.</div><label>Clave de API<input id="ai-k" type="password" autocomplete="off" value="${esc(c.key)}" placeholder="sk-ant-…"></label><label>Modelo<input id="ai-mo" value="${esc(c.model)}"></label><label style="display:flex;gap:8px;align-items:flex-start;color:var(--ink)"><input id="ai-d" type="checkbox" style="width:auto;margin-top:3px"${c.data?' checked':''}><span>Dejar que el bot vea mis contactos, operaciones y pendientes (se envían a Anthropic para poder corregir datos). Si no, solo ve el código de la app.</span></label><button class="btn" onclick="aiSave()">Guardar</button>`}
+function aiSave(){const o={key:txt('ai-k'),model:txt('ai-mo')||AIMODEL,data:!!$('#ai-d').checked};try{localStorage.setItem(AK,JSON.stringify(o))}catch(e){}toast('Guardado');aiV='chat';aiR()}
+/*AI-END*/
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
-th();R();
+boot();
 </script></body></html>
