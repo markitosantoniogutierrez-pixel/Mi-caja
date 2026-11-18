@@ -87,7 +87,7 @@ function home(){
  <h3>Hoy</h3><div class="card"><div class="row"><span>Operaciones</span><span class="num">${hoy.length}</span></div>
  <div class="row"><span>Ganancia en remesas</span><span class="num pos">${n(gu)} USD</span></div>
  <div class="row"><span>Margen vs. toque</span><span class="num ${gc<0?'neg':'pos'}">${n(gc,0)} CUP</span></div></div>
- <h3>Registrar</h3><div class="grid">${Object.keys(T).map(t=>`<button class="btn alt b-${t}" onclick="opForm('${t}')">${T[t]}</button>`).join('')}</div><button class="btn alt" style="margin-top:10px" onclick="pasteForm()">Envío de remesero (pegar mensaje)</button>`;
+ <h3>Registrar</h3><div class="grid">${Object.keys(T).map(t=>`<button class="btn alt b-${t}" onclick="opForm('${t}')">${T[t]}</button>`).join('')}</div><button class="btn alt" style="margin-top:10px" onclick="envForm()">Envío de remesero (con captura)</button>`;
 }
 function ft(){const b=bal();let u=b.u,c=b.c;for(const p of D.pen)if(!p.done){const s=p.dir==='me'?1:-1;if(p.cur==='CUP')c+=s*p.amt;else u+=s*p.amt}return{u,c}}
 function dl(){const d=txt('f-d'),L=$('#cl');if(L)L.innerHTML=D.con.filter(c=>(c.tipo||'cliente')===d).map(c=>`<option value="${esc(c.name)}">`).join('')}
@@ -98,6 +98,24 @@ function pasteForm(){sheet(`<h2>Envío desde mensaje</h2><div class="mut" style=
 function detect(){const tx=txt('f-txt'),N=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(),L=D.con.filter(c=>c.tipo==='remesero'),f=L.find(c=>N(tx).includes(N(c.name))),m=tx.match(/\$\s*([\d.,]+)/)||tx.match(/([\d.,]+)\s*(?:usd|dolares|dólares)/i)||tx.match(/(\d+(?:[.,]\d+)?)/),a=m?parseFloat(m[1].replace(',','.')):0;
  $('#dt').innerHTML=`<label>Remesero<select id="d-r">${L.map(c=>`<option value="${esc(c.name)}"${f&&f.id===c.id?' selected':''}>${esc(c.name)}</option>`).join('')}</select></label><label>Monto (USD)<input id="d-a" type="number" inputmode="decimal" step="any" value="${a||''}"></label><button class="btn" onclick="detOk()">Añadir a lo que me deben</button>`+(L.length?'':'<div class="mut">Primero crea un contacto de tipo remesero.</div>')}
 function detOk(){const a=val('d-a'),w=($('#d-r')||{}).value;if(a<=0||!w){toast('Falta el remesero o el monto');return}D.pen.unshift({id:Date.now(),dir:'me',who:w,cur:'USD',amt:a,due:'',note:'Envío detectado '+nowISO().replace('T',' '),env:true,done:false});save();closeS();R();toast('Añadido a lo que te deben')}
+let TS=null;
+function loadTS(){return TS||(TS=new Promise((ok,no)=>{if(window.Tesseract)return ok(window.Tesseract);const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=()=>ok(window.Tesseract);s.onerror=()=>{TS=null;no(new Error('red'))};document.head.appendChild(s)}))}
+function pn(s){s=s.replace(/[^\d.,]/g,'');if(!s)return 0;const a=s.lastIndexOf('.'),b=s.lastIndexOf(','),k=Math.max(a,b);if(k<0)return +s;const dec=s.length-k-1;if(dec===3&&(a<0||b<0))return +s.replace(/[.,]/g,'');return +(s.slice(0,k).replace(/[.,]/g,'')+'.'+s.slice(k+1))}
+function cands(t){const out=[];t.split(/\n/).forEach(l=>{const k=/(usd|\$|monto|amount|enviad|sent|total|importe|valor)/i.test(l);(l.match(/\d[\d.,]*\d|\d/g)||[]).forEach(m=>{const v=pn(m);if(v>=1&&v<1e6&&!/^0\d/.test(m)&&!(v>=1990&&v<=2100&&!/[.,]/.test(m)&&!k))out.push({v,s:(k?3:0)+(/[.,]\d{2}$/.test(m)?1:0)+(/\$\s*\d|usd/i.test(l)?1:0)})})});out.sort((a,b)=>b.s-a.s||b.v-a.v);const seen=new Set();return out.filter(o=>!seen.has(o.v)&&seen.add(o.v)).slice(0,4)}
+function envForm(){window._thumb=null;sheet(`<h2>Envío de remesero</h2><label>Remesero<input id="d-w" list="rl" autocomplete="off" placeholder="Nombre"></label><datalist id="rl">${D.con.filter(c=>c.tipo==='remesero').map(c=>`<option value="${esc(c.name)}">`).join('')}</datalist><label>Captura del envío<input id="d-f" type="file" accept="image/*" onchange="shot(this)"></label><img id="d-i" alt="" style="display:none;max-width:100%;border-radius:10px;margin-bottom:10px"><div id="d-s" class="mut" style="margin-bottom:8px"></div><div id="d-c" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div><label>Monto del envío (USD)<input id="d-a" type="number" inputmode="decimal" step="any"></label><button class="btn" onclick="envOk()">Añadir a lo que me deben</button>`)}
+async function shot(inp){const f=inp.files[0];if(!f)return;const im=$('#d-i'),st=$('#d-s');im.src=URL.createObjectURL(f);im.style.display='block';await new Promise(r=>{im.onload=r;im.onerror=r});
+ const mk=w=>{const k=Math.min(1,w/im.naturalWidth),c=document.createElement('canvas');c.width=Math.round(im.naturalWidth*k);c.height=Math.round(im.naturalHeight*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);return c};
+ const cv=mk(1000);window._thumb=mk(520).toDataURL('image/jpeg',.5);st.textContent='Leyendo la captura…';
+ try{const T=await loadTS(),w=await T.createWorker('eng'),r=await w.recognize(cv);await w.terminate();const tx=r.data.text,c=cands(tx),N=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(),m=D.con.find(x=>x.tipo==='remesero'&&N(tx).includes(N(x.name)));
+  if(m&&!txt('d-w'))$('#d-w').value=m.name;
+  if(c.length){$('#d-a').value=c[0].v;$('#d-c').innerHTML=c.map(o=>`<button class="btn alt sm" onclick="$('#d-a').value=${o.v}">${n(o.v)}</button>`).join('');st.textContent='Monto detectado. Revísalo antes de guardar.'}else st.textContent='No encontré un monto. Escríbelo a mano.'}
+ catch(e){st.textContent='No se pudo leer la captura (hace falta internet la primera vez). Escribe el monto a mano.'}}
+function envOk(){const a=val('d-a'),w=txt('d-w');if(a<=0||!w){toast('Falta el remesero o el monto');return}
+ if(!D.con.some(c=>c.name.toLowerCase()===w.toLowerCase()))D.con.push({id:Date.now()+1,name:w,tel:'',note:'',tipo:'remesero'});
+ const p={id:Date.now(),dir:'me',who:w,cur:'USD',amt:a,due:'',note:'Envío '+nowISO().replace('T',' '),env:true,done:false};if(window._thumb)p.img=window._thumb;D.pen.unshift(p);window._thumb=null;
+ try{localStorage.setItem('mi-caja-v1',JSON.stringify(D))}catch(e){delete p.img;toast('Sin espacio para la captura: guardado sin ella')}
+ save();closeS();R()}
+function vis(id){const p=D.pen.find(x=>x.id===id);if(p&&p.img)sheet(`<h2>${esc(p.who)}</h2><img src="${p.img}" alt="Captura" style="max-width:100%;border-radius:10px">`)}
 function setTq(v){D.s.toque=parseFloat(v)||0;D.s.tAt=nowISO();save();R()}
 function cq(){cu=$('#cu').value;cc=$('#cc').value;const b=bal(),el=$('#cqr');if(cu===''&&cc===''){el.textContent='';return}
  const du=(parseFloat(cu)||0)-b.u,dc=(parseFloat(cc)||0)-b.c,f=(x,u,d)=>Math.abs(x)<.005?'<span class="pos">cuadra</span>':`<span class="${x<0?'neg':'pos'}">${x>0?'sobran ':'faltan '}${n(Math.abs(x),d)} ${u}</span>`;
@@ -136,7 +154,7 @@ function conForm(){sheet(`<h2>Nuevo contacto</h2><label>Nombre<input id="c-n"></
 function saveCon(){const name=txt('c-n');if(!name){toast('Escribe el nombre');return}D.con.push({id:Date.now(),name,tel:txt('c-t'),note:txt('c-o'),tipo:txt('c-k')});save();closeS();R()}
 function pen(){const op=D.pen.filter(p=>!p.done),dn=D.pen.filter(p=>p.done),sum=(d,c)=>op.filter(p=>p.dir===d&&p.cur===c).reduce((s,p)=>s+p.amt,0);
  const row=p=>`<div class="it"><div><b>${esc(p.who||'Sin nombre')}</b><div class="mut">${esc(p.note||'')}${p.due?' · vence '+esc(p.due):''}</div></div><div style="text-align:right"><div class="num ${p.dir==='debo'?'neg':'pos'}">${n(p.amt,p.cur==='CUP'?0:2)} ${p.cur}</div>
- <button class="btn alt sm" onclick="done(${p.id})">${p.done?'Reabrir':'Saldar'}</button> <button class="ic" style="font-size:13px" onclick="del('pen',${p.id})">${armed==='pen'+p.id?'¿Borrar?':'Borrar'}</button></div></div>`;
+ <button class="btn alt sm" onclick="vis(${p.id})" style="${p.img?'':'display:none'}">Captura</button> <button class="btn alt sm" onclick="done(${p.id})">${p.done?'Reabrir':'Saldar'}</button> <button class="ic" style="font-size:13px" onclick="del('pen',${p.id})">${armed==='pen'+p.id?'¿Borrar?':'Borrar'}</button></div></div>`;
  return `<div class="row"><h2>Pendientes</h2><button class="btn sm" onclick="penForm()">Nueva</button></div>
  <div class="grid"><div class="card"><div class="mut">Me deben</div><div class="num pos">${n(sum('me','USD'))} USD</div><div class="num pos">${n(sum('me','CUP'),0)} CUP</div></div>
  <div class="card"><div class="mut">Debo</div><div class="num neg">${n(sum('debo','USD'))} USD</div><div class="num neg">${n(sum('debo','CUP'),0)} CUP</div></div></div>
