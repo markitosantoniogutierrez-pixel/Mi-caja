@@ -266,4 +266,83 @@ function aiSave(){const o={key:txt('ai-k'),model:txt('ai-mo')||AIMODEL,data:!!$(
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 boot();
+ /* ===== AUTO-REMESA: pegar justo ANTES de la línea  boot();  en index.html ===== */
+
+const AUTO_PREGUNTAR = true; // true = pide confirmar antes de registrar; false = registra directo
+
+function autoRem(o){
+  const usd = parseFloat(String(o.monto || '').replace(',', '.')) || 0;
+  const quien = String(o.quien || '').trim();
+  if (usd <= 0 || !quien) { toast('Faltan datos: monto o remesero'); return; }
+
+  const t  = o.tipo === 'rEU' ? 'rEU' : 'rUS';
+  const num = v => (v === '' || v == null || isNaN(parseFloat(v))) ? null : parseFloat(v);
+  const p  = num(o.p)  ?? (t === 'rEU' ? D.s.pEU : D.s.pUS);   // % que me paga el banco
+  const pp = num(o.pp) ?? (+D.s.lastPP || 0);                   // % que pago por encima al remesero
+
+  // Banco: acepta el id (b1, b2, b3) o el nombre; si no viene, usa el último usado
+  const bkIn = String(o.bk || '').trim().toLowerCase();
+  const bko = D.banks.find(b => b.id === bkIn || b.name.toLowerCase() === bkIn)
+           || D.banks.find(b => b.id === D.s.lastBk);
+  const bk = bko ? bko.id : '';
+  const bn = bko ? bko.name : '';
+
+  // Anti-duplicado: mismo monto y remesero en los últimos 2 minutos
+  const clave = usd + '|' + quien.toLowerCase();
+  const ult = D.s.lastAuto || {};
+  if (ult.k === clave && Date.now() - ult.at < 120000) { toast('Esa remesa ya se registró hace un momento'); return; }
+
+  const debo = +(usd * (1 + pp / 100)).toFixed(2);   // lo que le debo al remesero
+  const me   = +(usd * (1 + p  / 100)).toFixed(2);   // lo que me debe el banco
+
+  if (AUTO_PREGUNTAR && !confirm(
+    'Registrar envío de ' + n(usd) + ' USD de ' + quien + '?\n' +
+    'Le debes: ' + n(debo) + ' USD\n' +
+    (bn ? bn + ' te debe: ' : 'Te deben: ') + n(me) + ' USD\n' +
+    'Ganas: ' + n(me - debo) + ' USD')) return;
+
+  if (!D.con.some(c => c.name.toLowerCase() === quien.toLowerCase()))
+    D.con.push({ id: Date.now() + 1, name: quien, tel: '', note: '', tipo: 'remesero' });
+
+  const id = Date.now();
+  D.s.lastPP = pp; D.s.lastBk = bk; D.s.lastAuto = { k: clave, at: id };
+  D.ops.unshift({ id, t, who: quien, usd, rate: 0, p, pp, dest: 'remesero', cur: 'USD',
+                  bk: bk || undefined, at: nowISO(), note: 'auto', tq: +D.s.toque || 0 });
+
+  const nt = T[t] + ' de ' + n(usd) + ' USD (me pagan +' + n(p) + '%, pago +' + n(pp) + '%)';
+  D.pen.unshift({ id: id + 2, rid: id, dir: 'me', who: bn || quien, bk: bk || undefined, cur: 'USD',
+                  amt: me, due: '', note: nt + (bn ? ' · remesero: ' + quien : ''), done: false });
+  D.pen.unshift({ id: id + 3, rid: id, dir: 'debo', who: quien, cur: 'USD',
+                  amt: debo, due: '', note: nt, done: false });
+
+  save(); R(); toast('Envío registrado');
+}
+
+/* Vía 1: el Atajo abre la app con ?auto=1&monto=500&remesero=Juan&banco=b1 */
+try {
+  const q0 = new URLSearchParams(location.search);
+  if (q0.get('auto') === '1') {
+    setTimeout(() => {
+      autoRem({ monto: q0.get('monto'), quien: q0.get('remesero'), tipo: q0.get('tipo'),
+                p: q0.get('p'), pp: q0.get('pp'), bk: q0.get('banco') });
+      history.replaceState({}, '', location.pathname);
+    }, 300);
+  }
+} catch (e) {}
+
+/* Vía 2: el Atajo copia "caja|500|Juan|b1" al portapapeles y tú tocas el botón 📥 de la app */
+async function pegarEnvio(){
+  try {
+    const a = (await navigator.clipboard.readText()).split('|');
+    if (a[0] !== 'caja') { toast('En el portapapeles no hay un envío'); return; }
+    autoRem({ monto: a[1], quien: a[2], bk: a[3], tipo: a[4] });
+  } catch (e) { toast('No pude leer el portapapeles'); }
+}
+try {
+  document.querySelector('header span')
+    .insertAdjacentHTML('afterbegin', '<button class="ic" onclick="pegarEnvio()" aria-label="Pegar envío">📥</button>');
+} catch (e) {}
+
+/* ===== FIN — debajo debe seguir:  boot(); ===== */
+
 </script></body></html>
