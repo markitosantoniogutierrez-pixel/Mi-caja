@@ -469,6 +469,50 @@ const X='<h3>Registrar</h3><div class="xs"><svg viewBox="0 0 100 100"><path d="M
 const h0=window.home;
 window.home=function(){return h0().replace(/<h3>Registrar<\/h3><div class="grid"[^>]*>[\s\S]*?<\/div>/,X)};
 })();
+(function(){
+const DEN=[20000,10000,5000,2000,1000,500,200,100,50,20,10,5,1],K='mi-caja-cont';
+let C={};try{C=JSON.parse(localStorage.getItem(K))||{}}catch(e){}
+const sv=()=>{try{localStorage.setItem(K,JSON.stringify(C))}catch(e){}};
+let arm=0;
+const tot=()=>{let m=0,b=0;DEN.forEach(d=>{const c=+C[d]||0;m+=c*d;b+=c});return{m,b}};
+function upd(){const t=tot();
+ DEN.forEach(d=>{const e=document.getElementById('cs'+d);if(e)e.textContent=n((+C[d]||0)*d,0)});
+ const a=document.getElementById('ct'),b=document.getElementById('cb');
+ if(a)a.textContent=n(t.m,0);if(b)b.textContent=t.b}
+window.cSet=(d,v)=>{C[d]=Math.max(0,parseInt(v)||0);sv();upd()};
+window.cAdd=(d,x)=>{C[d]=Math.max(0,(+C[d]||0)+x);sv();const i=document.getElementById('ci'+d);if(i)i.value=C[d]||'';upd()};
+window.cClr=()=>{
+ const b=document.getElementById('cx');
+ if(!arm){arm=1;b.textContent='Toca otra vez para borrar todo';
+  setTimeout(()=>{arm=0;const e=document.getElementById('cx');if(e)e.textContent='🗑 Borrar todo'},3000);return}
+ arm=0;C={};sv();R()};
+window.cont=function(){
+ const t=tot();
+ return `<h2>Contador de dinero</h2>
+<div class="card" style="position:sticky;top:0;z-index:2;border-left:4px solid var(--c-venta)">
+<div class="mut">Total contado</div>
+<div class="row"><span class="num big"><span id="ct">${n(t.m,0)}</span></span><span class="mut"><b id="cb">${t.b}</b> billetes</span></div></div>
+<div class="card" style="padding:4px 14px">${DEN.map(d=>`<div class="it" style="align-items:center;gap:8px"><div style="min-width:62px"><b>${n(d,0)}</b></div>
+<div style="display:flex;align-items:center;gap:6px;flex:1;justify-content:center"><button class="btn alt sm" onclick="cAdd(${d},-1)">−</button>
+<input id="ci${d}" type="number" inputmode="numeric" min="0" placeholder="0" value="${C[d]||''}" oninput="cSet(${d},this.value)" style="width:68px;text-align:center;margin:0">
+<button class="btn alt sm" onclick="cAdd(${d},1)">+</button></div>
+<div class="num" style="min-width:84px;text-align:right" id="cs${d}">${n((+C[d]||0)*d,0)}</div></div>`).join('')}</div>
+<button class="btn alt" id="cx" style="color:var(--neg);width:100%" onclick="cClr()">🗑 Borrar todo</button>`};
+const svg=p=>`<svg viewBox="0 0 24 24">${p}</svg>`;
+const I={home:svg('<path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/>'),
+ops:svg('<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>'),
+con:svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.7 0 4.5 1.8 4.5 4.5"/>'),
+pen:svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+calc:svg('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M8 15h2M12 15h2M8 18h8"/>'),
+cont:svg('<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 10v.01M18 14v.01"/>')};
+const st=document.createElement('style');st.textContent='nav button{font-size:10px}';document.head.appendChild(st);
+window.R=function(){
+ const tabs=[['home',I.home,'Inicio'],['ops',I.ops,'Operaciones'],['con',I.con,'Contactos'],['pen',I.pen,'Pendientes'],['calc',I.calc,'Calcular'],['cont',I.cont,'Contador']];
+ $('#nv').innerHTML=tabs.map(a=>`<button class="${tab===a[0]?'on':''}" onclick="go('${a[0]}')"><b>${a[1]}</b>${a[2]}</button>`).join('');
+ $('#v').innerHTML=({home,ops,con,pen,calc,cont})[tab]();
+ if(tab==='ops')opl();
+};
+})();
 
 boot();
  
