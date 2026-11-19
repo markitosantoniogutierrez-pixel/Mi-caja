@@ -265,7 +265,6 @@ function aiSave(){const o={key:txt('ai-k'),model:txt('ai-mo')||AIMODEL,data:!!$(
 /*AI-END*/
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
-boot();
  /* ===== MEJORAS MI CAJA: pegar justo ANTES de  boot();  (después del bloque auto-remesa si lo tienes) ===== */
 (function(){
 const ICN={compra:'🛒',venta:'💵',rUS:'🇺🇸',rEU:'🇪🇺',ing:'➕'};
@@ -434,5 +433,25 @@ ${meta?`<div class="prog"><i style="width:${pct}%"></i></div><div class="row"><s
 <label>USD<input id="g-u" type="number" inputmode="decimal" step="any" oninput="kg()"></label><div class="pv" id="g-x"></div></details>`};
 })();
 /* ===== FIN — debajo debe seguir:  boot(); ===== */
+ (function(){
+const st=document.createElement('style');
+st.textContent='#ol .it{padding:7px 0}#ol .it b{font-size:13px}#ol .mut{font-size:11px}#ol .num{font-size:13px}#ol .btn.sm{padding:4px 8px;font-size:11px}#ol .dh{font-size:13px;padding:10px 12px}';
+document.head.appendChild(st);
+const o0=window.opl;
+window.opl=function(){
+ o0();
+ const ol=document.getElementById('ol'),k=[...ol.children];let i=0;
+ while(i<k.length){
+  if(k[i].classList.contains('dh')){
+   let j=i+1;while(j<k.length&&!k[j].classList.contains('dh'))j++;
+   k.slice(i+1,j).reverse().forEach(e=>ol.insertBefore(e,k[j]||null));
+   i=j;
+  }else i++;
+ }
+};
+})();
+
+boot();
+ 
 
 </script></body></html>
