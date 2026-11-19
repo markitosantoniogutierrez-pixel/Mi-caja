@@ -450,6 +450,25 @@ window.opl=function(){
  }
 };
 })();
+(function(){
+const st=document.createElement('style');
+st.textContent=`
+.xs{position:relative;width:100%;max-width:340px;aspect-ratio:1/1;margin:8px auto 14px}
+.xs svg{position:absolute;inset:0;width:100%;height:100%}
+.xs .tile{position:absolute;width:27%;aspect-ratio:1/1;padding:0;border-radius:50%;justify-content:center;gap:2px;font-size:11px;line-height:1.1;text-align:center;transform:translate(-50%,-50%);box-shadow:0 4px 12px rgba(15,27,45,.15)}
+.xs .tile span{font-size:26px}
+.xs .tile:active{transform:translate(-50%,-50%) scale(.93)}
+.xs .tile.b-compra{border:3px solid var(--c-compra)}
+.xs .tile.b-venta{border:3px solid var(--c-venta)}
+.xs .tile.b-rUS,.xs .tile.b-rEU{border:3px solid var(--c-rem)}
+.xs .tile.b-ing{border:3px solid var(--c-ing);width:31%;background:color-mix(in srgb,var(--c-ing) 10%,var(--card))}`;
+document.head.appendChild(st);
+const P=[['compra','🛒','Compra',20,20],['venta','💵','Venta',80,20],['rEU','🇪🇺','Remesa<br>UE',20,80],['rUS','🇺🇸','Remesa<br>EEUU',80,80],['ing','➕','Otros',50,50]];
+const X='<h3>Registrar</h3><div class="xs"><svg viewBox="0 0 100 100"><path d="M20 20L80 80M80 20L20 80" stroke="var(--acc)" stroke-opacity=".35" stroke-width=".8" fill="none"/></svg>'
++P.map(p=>`<button class="tile b-${p[0]}" style="left:${p[3]}%;top:${p[4]}%" onclick="opForm('${p[0]}')"><span>${p[1]}</span>${p[2]}</button>`).join('')+'</div>';
+const h0=window.home;
+window.home=function(){return h0().replace(/<h3>Registrar<\/h3><div class="grid"[^>]*>[\s\S]*?<\/div>/,X)};
+})();
 
 boot();
  
